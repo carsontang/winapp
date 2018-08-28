@@ -17,8 +17,72 @@
 // }
 
 // include the basic windows header file
+#include <stdio.h>
+#include <d3d11.h>
+#pragma comment (lib, "d3d11.lib")
 #include <windows.h>
 #include <windowsx.h>
+
+typedef HRESULT (WINAPI *d3d10create_t)(IDXGIAdapter*, D3D10_DRIVER_TYPE,
+		HMODULE, UINT, UINT, DXGI_SWAP_CHAIN_DESC*,
+		IDXGISwapChain**, IUnknown**);
+
+typedef struct dxgi_info {
+    IDXGISwapChain      *swap;
+    ID3D11Device        *device;
+    ID3D11DeviceContext *context;
+} dxgi_info;
+
+void init_d3d(HWND hwnd, dxgi_info *info)
+{
+    DXGI_SWAP_CHAIN_DESC sd;
+
+    ZeroMemory(&sd, sizeof(DXGI_SWAP_CHAIN_DESC));
+
+    sd.BufferCount       = 2; // 2 backbuffers
+    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    sd.BufferUsage       = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    sd.OutputWindow      = hwnd;
+    sd.SampleDesc.Count  = 1;
+    sd.Windowed          = TRUE;
+
+    D3D11CreateDeviceAndSwapChain(
+        NULL,                         // default graphics adapter
+        D3D_DRIVER_TYPE_HARDWARE,
+        NULL,                         // Software
+        NULL,                         // Flags
+        NULL,                         // Feature levels
+        NULL,
+        D3D11_SDK_VERSION,
+        &sd,
+        &(info->swap),
+        &(info->device),
+        NULL,
+        &(info->context)
+    );
+}
+
+void dxgi_free(dxgi_info *info) {
+    unsigned long device_count = 0;
+    unsigned long context_count = 0;
+    unsigned long swap_count = 0;
+
+    if (info->device) {
+        device_count = info->device->Release();
+    }
+
+    if (info->context) {
+        context_count = info->context->Release();
+    }
+
+    if (info->swap) {
+        swap_count = info->swap->Release();
+    }
+
+    printf("device: %lu\n", device_count);
+    printf("context: %lu\n", context_count);
+    printf("swap: %lu\n", swap_count);
+}
 
 // the WindowProc function prototype
 LRESULT CALLBACK WindowProc(HWND hWnd,
@@ -33,7 +97,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
                    int nCmdShow)
 {
     // the handle for the window, filled by a function
-    HWND hWnd;
+    HWND hwnd;
     // this struct holds information for the window class
     WNDCLASSEX wc;
 
@@ -53,7 +117,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
     RegisterClassEx(&wc);
 
     // create the window and use the result as the handle
-    hWnd = CreateWindowEx(WS_EX_ACCEPTFILES,
+    hwnd = CreateWindowEx(WS_EX_ACCEPTFILES,
                           "WindowClass1",    // name of the window class
                           "Our First Windowed Program",   // title of the window
                           WS_OVERLAPPEDWINDOW,    // window style
@@ -67,7 +131,11 @@ int WINAPI WinMain(HINSTANCE hInstance,
                           NULL);    // used with multiple windows, NULL
 
     // display the window on the screen
-    ShowWindow(hWnd, nCmdShow);
+    ShowWindow(hwnd, nCmdShow);
+
+    dxgi_info info;
+    // set up and initialize D3D
+    init_d3d(hwnd, &info);
 
     // enter the main loop:
 
@@ -85,6 +153,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
     }
 
     // return this part of the WM_QUIT message to Windows
+
+    dxgi_free(&info);
     return msg.wParam;
 }
 
