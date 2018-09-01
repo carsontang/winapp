@@ -1,7 +1,11 @@
 project(carson-winapp)
 
+set(carson-winapp_HEADERS
+	WICTextureLoader.h)
+
 set(carson-winapp_SOURCES
-	main.cpp)
+	main.cpp
+	WICTextureLoader.cpp)
 
 if(MSVC)
 	add_compile_options("$<$<CONFIG:RelWithDebInfo>:/MT>")
@@ -13,7 +17,9 @@ add_executable(carson-winapp
     WIN32
 	${carson-winapp_SOURCES})
 
-target_link_libraries(carson-winapp)
+target_include_directories(carson-winapp PRIVATE ${carson-winapp_HEADERS})
+
+target_link_libraries(carson-winapp dxguid)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
 	set(_output_suffix "64")

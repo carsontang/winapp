@@ -523,16 +523,16 @@ void RenderFrame(void)
     const FLOAT color_rgba[4] = {0.0f, 0.2f, 0.4f, 1.0f};
     devcon->ClearRenderTargetView(backbuffer, color_rgba);
 
-        // select which vertex buffer to display
-        UINT stride = sizeof(VERTEX);
-        UINT offset = 0;
-        devcon->IASetVertexBuffers(0, 1, &pVBuffer, &stride, &offset);
+    // select which vertex buffer to display
+    UINT stride = sizeof(VERTEX);
+    UINT offset = 0;
+    devcon->IASetVertexBuffers(0, 1, &pVBuffer, &stride, &offset);
 
-        // select which primtive type we are using
-        devcon->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    // select which primtive type we are using
+    devcon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
-        // draw the vertex buffer to the back buffer
-        devcon->Draw(3, 0);
+    // draw the vertex buffer to the back buffer
+    devcon->Draw(4, 0);
 
     // switch the back buffer and the front buffer
     swapchain->Present(0, 0);
@@ -562,19 +562,27 @@ void InitGraphics()
     float rgba0[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
     float rgba1[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
 
+//    VERTEX OurVertices[] = {
+//     {0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+//     {0.45f, -0.5, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
+//     {-0.45f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f}
+//     };
    VERTEX OurVertices[] = {
-    {0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f},
-    {0.45f, -0.5, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
-    {-0.45f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f}
+    {-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {-0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f}
+    // {0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+    // {0.5f, -0.5, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
+    // {-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f}
     };
-
 
     // create the vertex buffer
     D3D11_BUFFER_DESC bd;
     ZeroMemory(&bd, sizeof(bd));
 
     bd.Usage = D3D11_USAGE_DYNAMIC;                // write access access by CPU and GPU
-    bd.ByteWidth = sizeof(VERTEX) * 3;             // size is the VERTEX struct * 3
+    bd.ByteWidth = sizeof(VERTEX) * 4;             // size is the VERTEX struct * 3
     bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;       // use as a vertex buffer
     bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;    // allow CPU to write in buffer
 
