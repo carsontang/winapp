@@ -315,10 +315,13 @@ IDXGISwapChain *swapchain;             // the pointer to the swap chain interfac
 ID3D11Device *dev;                     // the pointer to our Direct3D device interface
 ID3D11DeviceContext *devcon;           // the pointer to our Direct3D device context
 ID3D11RenderTargetView *backbuffer;    // the pointer to our back buffer
+ID3D11DepthStencilView *zbuffer;
 ID3D11InputLayout *pLayout;            // the pointer to the input layout
 ID3D11VertexShader *pVS;               // the pointer to the vertex shader
 ID3D11PixelShader *pPS;                // the pointer to the pixel shader
 ID3D11Buffer *pVBuffer;                // the pointer to the vertex buffer
+ID3D11Resource *pTexture;
+ID3D11ShaderResourceView *pTextureView;
 
 // a struct to define a single vertex
 typedef struct D3DXCOLOR {
@@ -336,8 +339,7 @@ struct VERTEX {
     FLOAT G;
     FLOAT B;
     FLOAT A;
-    // FLOAT X, Y, Z, R, G, B, A;
-    // D3DXCOLOR Color;
+    FLOAT U, V;
 };
 
 // function prototypes
@@ -489,6 +491,27 @@ void InitD3D(HWND hWnd)
                                   NULL,
                                   &devcon);
 
+    D3D11_TEXTURE2D_DESC texd;
+    ZeroMemory(&texd, sizeof(texd));
+    texd.Width = SCREEN_WIDTH;
+    texd.Height = SCREEN_HEIGHT;
+    texd.ArraySize = 1;
+    texd.MipLevels = 1;
+    texd.SampleDesc.Count = 4;
+    texd.Format = DXGI_FORMAT_D32_FLOAT;
+    texd.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+    ID3D11Texture2D *pDepthBuffer;
+    dev->CreateTexture2D(&texd, NULL, &pDepthBuffer);
+
+    // create depth buffer
+    D3D11_DEPTH_STENCIL_VIEW_DESC dsvd;
+    ZeroMemory(&dsvd, sizeof(dsvd));
+
+    dsvd.Format = DXGI_FORMAT_D32_FLOAT;
+    dsvd.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
+
+    dev->CreateDepthStencilView(pDepthBuffer, &dsvd, &zbuffer);
 
     // get the address of the back buffer
     ID3D11Texture2D *pBackBuffer;
@@ -532,6 +555,7 @@ void RenderFrame(void)
 
     // select which primtive type we are using
     devcon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    devcon->PSSetShaderResources(0, 1, &pTextureView);
 
     // draw the vertex buffer to the back buffer
     devcon->Draw(4, 0);
@@ -555,28 +579,25 @@ void CleanD3D(void)
     backbuffer->Release();
     dev->Release();
     devcon->Release();
+    pTexture->Release();
+    pTextureView->Release();
 }
 
 // this is the function that creates the shape to render
 void InitGraphics()
 {
-    // create a triangle using the VERTEX struct
-    float rgba0[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
-    float rgba1[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
-
-//    VERTEX OurVertices[] = {
-//     {0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f},
-//     {0.45f, -0.5, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
-//     {-0.45f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f}
-//     };
+    // TODO(carson): make align (u, v) with vertices
+    /*
+        FLOAT X, Y, Z;
+        FLOAT R, G, B, A;
+        FLOAT U, V;
+    */
+    // {-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f},
    VERTEX OurVertices[] = {
-    {-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f}
-    // {0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f},
-    // {0.5f, -0.5, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
-    // {-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f}
+    {-0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f},
+    {0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f},
+    {-0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f},
+    {0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f}
     };
 
     // create the vertex buffer
@@ -602,16 +623,7 @@ void InitGraphics()
 // this function loads and prepares the shaders
 void InitPipeline()
 {
-    // HRESULT CreateWICTextureFromFile( _In_ ID3D11Device* d3dDevice,
-    //                               _In_opt_ ID3D11DeviceContext* d3dContext,
-    //                               _In_z_ const wchar_t* szFileName,
-    //                               _Out_opt_ ID3D11Resource** texture,
-    //                               _Out_opt_ ID3D11ShaderResourceView** textureView,
-    //                               _In_ size_t maxsize = 0
-    //                             );
     HRESULT hr;
-    ID3D11Resource *pTexture;
-    ID3D11ShaderResourceView *pTextureView;
 
     hr = CreateWICTextureFromFile(
         dev,
@@ -626,28 +638,32 @@ void InitPipeline()
 
     // load and compile the two shaders
     ID3D10Blob *VS, *PS;
-    // D3DX11CompileFromFile(L"shaders.shader", 0, 0, "VShader", "vs_4_0", 0, 0, 0, &VS, 0, 0);
-    // D3DX11CompileFromFile(L"shaders.shader", 0, 0, "PShader", "ps_4_0", 0, 0, 0, &PS, 0, 0);
 
     static const char *vertex_shader_string =
-    "struct VOut \
+    "Texture2D Texture; \
+    SamplerState ss; \
+    struct VOut \
     { \
     float4 position : SV_POSITION; \
+    float2 texcoord : TEXCOORD; \
     float4 color : COLOR; \
     }; \
     \
-    VOut VShader(float4 position : POSITION, float4 color : COLOR) \
+    VOut VShader(float4 position : POSITION, float4 color : COLOR, float2 texcoord : TEXCOORD) \
     { \
     VOut output; \
     output.position = position; \
     output.color = color; \
+    output.texcoord = texcoord; \
     return output; \
     }";
 
     static const char *pixel_shader_string = 
-    "float4 PShader(float4 position : SV_POSITION, float4 color : COLOR) : SV_TARGET \
+    "Texture2D Texture; \
+    SamplerState ss; \
+    float4 PShader(float4 position : SV_POSITION, float4 color : COLOR, float2 texcoord : TEXCOORD) : SV_TARGET \
     { \
-    return color; \
+    return color * Texture.Sample(ss, texcoord); \
     }";
 
     pD3DCompile compile = get_compiler();
@@ -698,6 +714,7 @@ void InitPipeline()
     {
         {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
         {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0},
     };
 
     dev->CreateInputLayout(ied, 2, VS->GetBufferPointer(), VS->GetBufferSize(), &pLayout);
