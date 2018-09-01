@@ -616,11 +616,11 @@ void InitPipeline()
     hr = CreateWICTextureFromFile(
         dev,
         devcon,
-        L"C:\\Users\\Carson Tang\\source\\repos\\carson-winapp\\visortab.png",
+        L"C:\\Users\\Carson Tang\\source\\repos\\carson-winapp\\tab.png",
         &pTexture,
         &pTextureView);
     if (FAILED(hr)) {
-        OutputDebugStringA("[VisorGG] failed to load visortab.png");
+        OutputDebugStringA("[VisorGG] failed to load tab.png");
         return;
     }
 
