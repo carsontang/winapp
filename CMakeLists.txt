@@ -19,7 +19,7 @@ add_executable(carson-winapp
 
 target_include_directories(carson-winapp PRIVATE ${carson-winapp_HEADERS})
 
-target_link_libraries(carson-winapp dxguid)
+target_link_libraries(carson-winapp d3d11 dxguid)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
 	set(_output_suffix "64")

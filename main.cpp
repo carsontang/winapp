@@ -296,11 +296,13 @@
 #include <d3dcompiler.h>
 #include <stdio.h>
 
+#include "WICTextureLoader.h"
+
 // #include <d3dx11.h>
 // #include <d3dx10.h>
 
 // include the Direct3D Library file
-#pragma comment (lib, "d3d11.lib")
+// #pragma comment (lib, "d3d11.lib")
 // #pragma comment (lib, "d3dx11.lib")
 // #pragma comment (lib, "d3dx10.lib")
 
@@ -600,7 +602,28 @@ void InitGraphics()
 // this function loads and prepares the shaders
 void InitPipeline()
 {
-    
+    // HRESULT CreateWICTextureFromFile( _In_ ID3D11Device* d3dDevice,
+    //                               _In_opt_ ID3D11DeviceContext* d3dContext,
+    //                               _In_z_ const wchar_t* szFileName,
+    //                               _Out_opt_ ID3D11Resource** texture,
+    //                               _Out_opt_ ID3D11ShaderResourceView** textureView,
+    //                               _In_ size_t maxsize = 0
+    //                             );
+    HRESULT hr;
+    ID3D11Resource *pTexture;
+    ID3D11ShaderResourceView *pTextureView;
+
+    hr = CreateWICTextureFromFile(
+        dev,
+        devcon,
+        L"C:\\Users\\Carson Tang\\source\\repos\\carson-winapp\\visortab.png",
+        &pTexture,
+        &pTextureView);
+    if (FAILED(hr)) {
+        OutputDebugStringA("[VisorGG] failed to load visortab.png");
+        return;
+    }
+
     // load and compile the two shaders
     ID3D10Blob *VS, *PS;
     // D3DX11CompileFromFile(L"shaders.shader", 0, 0, "VShader", "vs_4_0", 0, 0, 0, &VS, 0, 0);
@@ -628,7 +651,7 @@ void InitPipeline()
     }";
 
     pD3DCompile compile = get_compiler();
-    HRESULT hr = compile(
+    hr = compile(
         vertex_shader_string, // pointer to uncompiled ASCII HLSL code
         strlen(vertex_shader_string), // length of HLSL code
         "vertex_shader", // source name
