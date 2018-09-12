@@ -56,7 +56,7 @@ void CreatePipe()
     //     nullptr);
 
     hImage = CreateFileW(
-        L"C:\\Users\\Carson Tang\\Documents\\tab.bmp",
+        L"../../tab.bmp",
         GENERIC_READ | GENERIC_WRITE,
         0, // the pipe can only be opened once
         nullptr,
@@ -88,14 +88,14 @@ void CreatePipe()
     
     buffer = (uint8_t*)MapViewOfFile(hFilemap, FILE_MAP_WRITE, 0, 0, 0);
 
-    for (int i = 0; i < 1920*1040*4; i += 4) {
-        buffer[i] = 255; // b
-        buffer[i+1] = 120; // g 
+    // for (int i = 0; i < 1920*1040*4; i += 4) {
+    //     buffer[i] = 255; // b
+    //     buffer[i+1] = 120; // g 
 
-        if (buffer[i+3] > 0) {
-            buffer[i+3] /= 2;
-        }
-    }
+    //     if (buffer[i+3] > 0) {
+    //         buffer[i+3] /= 2;
+    //     }
+    // }
 }
 
 // a struct to define a single vertex
@@ -107,13 +107,32 @@ typedef struct D3DXCOLOR {
 } D3DXCOLOR;
 
 struct VERTEX {
-    FLOAT X;
-    FLOAT Y;
-    FLOAT Z;
-    FLOAT R;
-    FLOAT G;
-    FLOAT B;
-    FLOAT A;
+    FLOAT X, Y, Z;
+    FLOAT R, G, B, A;
+};
+
+// struct VERTEX {
+//     FLOAT X, Y, Z;
+//     FLOAT R, G, B, A;
+//     FLOAT U, V;
+// };
+
+struct SimpleVec3 {
+	FLOAT x;
+	FLOAT y;
+	FLOAT z;
+	SimpleVec3(FLOAT _x, FLOAT _y, FLOAT _z) : x(_x), y(_y), z(_z) {}
+};
+
+struct SimpleVec2 {
+	FLOAT x;
+	FLOAT y;
+	SimpleVec2(FLOAT _x, FLOAT _y) : x(_x), y(_y) {}
+};
+
+struct SimpleVertex {
+	SimpleVec3 Pos;
+	SimpleVec2 Tex;
 };
 
 // function prototypes
@@ -300,16 +319,16 @@ void RenderFrame(void)
     const FLOAT color_rgba[4] = {0.0f, 0.2f, 0.4f, 1.0f};
     devcon->ClearRenderTargetView(backbuffer, color_rgba);
 
-        // select which vertex buffer to display
-        UINT stride = sizeof(VERTEX);
-        UINT offset = 0;
-        devcon->IASetVertexBuffers(0, 1, &pVBuffer, &stride, &offset);
+    // select which vertex buffer to display
+    UINT stride = sizeof(VERTEX);
+    UINT offset = 0;
+    devcon->IASetVertexBuffers(0, 1, &pVBuffer, &stride, &offset);
 
-        // select which primtive type we are using
-        devcon->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    // select which primtive type we are using
+    devcon->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
-        // draw the vertex buffer to the back buffer
-        devcon->Draw(3, 0);
+    // draw the vertex buffer to the back buffer
+    devcon->Draw(4, 0);
 
     // switch the back buffer and the front buffer
     swapchain->Present(0, 0);
@@ -346,11 +365,43 @@ void InitGraphics()
     float rgba0[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
     float rgba1[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
 
-   VERTEX OurVertices[] = {
-    {0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f},
-    {0.45f, -0.5, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
-    {-0.45f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f}
+//    VERTEX OurVertices[] = {
+//     {0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+//     {0.45f, -0.5, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
+//     {-0.45f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f}
+//     };
+
+    VERTEX OurVertices[] = {
+    {-0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+    {-0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
+    {0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f},
     };
+
+    float w = static_cast<float>(1920);
+	float h = static_cast<float>(1040);
+
+	float left   = static_cast<float>(0) - 0.5f;
+	float top    = static_cast<float>(1) - 0.5f;
+	float right  = static_cast<float>(1) + 0.5f;
+	float bottom = static_cast<float>(0) + 0.5f;
+
+	float texl = (left) / w;
+	float text = (top) / h;
+	float texr = (right + 1.0f) / w;
+	float texb = (bottom + 1.0f) / h;
+
+	left = 2.0f * (left / SCREEN_WIDTH) - 1.0f;
+	right = 2.0f * (right / SCREEN_WIDTH) - 1.0f;
+	top = -2.0f * (top / SCREEN_HEIGHT) + 1.0f;
+	bottom = -2.0f * (bottom / SCREEN_HEIGHT) + 1.0f;
+
+    SimpleVertex vertices[] = {
+		{ SimpleVec3(left, top, 0.5f), SimpleVec2(texl, text) },
+		{ SimpleVec3(right, top, 0.5f), SimpleVec2(texr, text) },
+		{ SimpleVec3(right, bottom, 0.5f), SimpleVec2(texr, texb) },
+		{ SimpleVec3(left, bottom, 0.5f), SimpleVec2(texl, texb) },
+	};
 
 
     // create the vertex buffer
@@ -358,7 +409,7 @@ void InitGraphics()
     ZeroMemory(&bd, sizeof(bd));
 
     bd.Usage = D3D11_USAGE_DYNAMIC;                // write access access by CPU and GPU
-    bd.ByteWidth = sizeof(VERTEX) * 3;             // size is the VERTEX struct * 3
+    bd.ByteWidth = sizeof(VERTEX) * 4;             // size is the VERTEX struct * 3
     bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;       // use as a vertex buffer
     bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;    // allow CPU to write in buffer
 
@@ -371,11 +422,11 @@ void InitGraphics()
     memcpy(ms.pData, OurVertices, sizeof(OurVertices));                 // copy the data
     devcon->Unmap(pVBuffer, NULL);                                      // unmap the buffer
 
-    D3D11_MAPPED_SUBRESOURCE ms;
-    devcon->Map(pTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms);
-    memcpy(ms.pData, buffer, 1920*1040*4);
-    ms.RowPitch = 1920 * 4; // The value that the runtime adds to pData to move from row to row
-    ms.DepthPitch = 0;
+    D3D11_MAPPED_SUBRESOURCE ms2;
+    devcon->Map(pTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms2);
+    memcpy(ms2.pData, buffer, 1920*1040*4);
+    ms2.RowPitch = 1920 * 4; // The value that the runtime adds to pData to move from row to row
+    ms2.DepthPitch = 0;
     devcon->Unmap(pTexture, 0);
 }
 
