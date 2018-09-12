@@ -27,6 +27,90 @@ ID3D11VertexShader *pVS;               // the pointer to the vertex shader
 ID3D11PixelShader *pPS;                // the pointer to the pixel shader
 ID3D11Buffer *pVBuffer;                // the pointer to the vertex buffer
 
+ID3D11Resource *pTexture;
+ID3D11ShaderResourceView *pSRV;
+
+HANDLE pipe;
+HANDLE image_handle;
+
+void CreatePipe()
+{
+    /*
+    Name of pipe must be
+    \\ServerName\pipe\PipeName
+    
+    In \\.\\pipe\PipeName
+    the period represents the local computer
+    */
+    // pipe = CreateFileW(
+    //     L"\\\\.\\pipe\\VisorOverlayPipe",
+    //     GENERIC_READ | GENERIC_WRITE,
+    //     0, // the pipe can only be opened once
+    //     nullptr,
+    //     OPEN_ALWAYS,
+    //     0,
+    //     nullptr);
+
+    image_handle = CreateFileW(
+        L"C:\\Users\\Carson Tang\\Documents\\tab.bmp",
+        GENERIC_READ | GENERIC_WRITE,
+        0, // the pipe can only be opened once
+        nullptr,
+        OPEN_EXISTING,
+        0,
+        nullptr);
+    
+    if (image_handle == INVALID_HANDLE_VALUE) {
+        DWORD lasterror = GetLastError();
+        OutputDebugStringA("[VisorGG] Error code\n");
+        return;
+    } else {
+        OutputDebugStringA("[VisorGG] No errors opening image\n");
+    }
+
+    HANDLE filemap = CreateFileMapping(
+        image_handle,
+        nullptr,
+        PAGE_READWRITE,
+        0,
+        1920 * 1040 * 4,
+        nullptr);
+    
+    if (filemap == INVALID_HANDLE_VALUE) {
+        OutputDebugStringA("[VisorGG] invalid file mapping");
+    } else {
+        OutputDebugStringA("[VisorGG] valid file mapping");
+    }
+    // run GetLastError here too
+    // Then map file data into process
+    
+    PBYTE pbFile = (PBYTE) MapViewOfFile(filemap, FILE_MAP_WRITE, 0, 0, 0);
+
+    for (int i = 0; i < 1920*1040*4; i += 4) {
+        pbFile[i] = 255; // b
+        pbFile[i+1] = 120; // g 
+
+        if (pbFile[i+3] > 0) {
+            pbFile[i+3] /= 2;
+        }
+    }
+
+    UnmapViewOfFile(pbFile);
+    CloseHandle(filemap);
+    CloseHandle(image_handle);
+    // HRESULT hr = CreateWICTextureFromFile(
+    //     dev,
+    //     devcon,
+    //     L"C:\\Users\\Carson Tang\\Documents\\tab5.bmp",
+    //     &pTexture,
+    //     &pSRV,
+    //     1920*1040*8);
+    
+//     if (FAILED(hr)) {
+//         OutputDebugStringA("[VisorGG] Failed to create texture and srv");
+//     }
+}
+
 // a struct to define a single vertex
 typedef struct D3DXCOLOR {
   FLOAT r;
@@ -122,7 +206,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
     // enter the main loop:
 
     MSG msg;
-
+    CreatePipe();
     while(TRUE)
     {
         if(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
