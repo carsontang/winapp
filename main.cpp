@@ -4,6 +4,7 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <stdio.h>
+#include <stdint.h>
 
 // #include <d3dx11.h>
 // #include <d3dx10.h>
@@ -27,11 +28,14 @@ ID3D11VertexShader *pVS;               // the pointer to the vertex shader
 ID3D11PixelShader *pPS;                // the pointer to the pixel shader
 ID3D11Buffer *pVBuffer;                // the pointer to the vertex buffer
 
-ID3D11Resource *pTexture;
+// ID3D11Resource *pTexture;
+ID3D11Texture2D *pTexture;
 ID3D11ShaderResourceView *pSRV;
 
 HANDLE pipe;
-HANDLE image_handle;
+HANDLE hImage;
+HANDLE hFilemap;
+uint8_t *buffer;
 
 void CreatePipe()
 {
@@ -51,7 +55,7 @@ void CreatePipe()
     //     0,
     //     nullptr);
 
-    image_handle = CreateFileW(
+    hImage = CreateFileW(
         L"C:\\Users\\Carson Tang\\Documents\\tab.bmp",
         GENERIC_READ | GENERIC_WRITE,
         0, // the pipe can only be opened once
@@ -60,55 +64,38 @@ void CreatePipe()
         0,
         nullptr);
     
-    if (image_handle == INVALID_HANDLE_VALUE) {
+    if (hImage == INVALID_HANDLE_VALUE) {
         DWORD lasterror = GetLastError();
         OutputDebugStringA("[VisorGG] Error code\n");
         return;
     } else {
-        OutputDebugStringA("[VisorGG] No errors opening image\n");
+        ; // OutputDebugStringA("[VisorGG] No errors opening image\n");
     }
 
-    HANDLE filemap = CreateFileMapping(
-        image_handle,
+    HANDLE hFilemap = CreateFileMapping(
+        hImage,
         nullptr,
         PAGE_READWRITE,
         0,
         1920 * 1040 * 4,
         nullptr);
     
-    if (filemap == INVALID_HANDLE_VALUE) {
+    if (hFilemap == INVALID_HANDLE_VALUE) {
         OutputDebugStringA("[VisorGG] invalid file mapping");
     } else {
-        OutputDebugStringA("[VisorGG] valid file mapping");
+        ; // OutputDebugStringA("[VisorGG] valid file mapping");
     }
-    // run GetLastError here too
-    // Then map file data into process
     
-    PBYTE pbFile = (PBYTE) MapViewOfFile(filemap, FILE_MAP_WRITE, 0, 0, 0);
+    buffer = (uint8_t*)MapViewOfFile(hFilemap, FILE_MAP_WRITE, 0, 0, 0);
 
     for (int i = 0; i < 1920*1040*4; i += 4) {
-        pbFile[i] = 255; // b
-        pbFile[i+1] = 120; // g 
+        buffer[i] = 255; // b
+        buffer[i+1] = 120; // g 
 
-        if (pbFile[i+3] > 0) {
-            pbFile[i+3] /= 2;
+        if (buffer[i+3] > 0) {
+            buffer[i+3] /= 2;
         }
     }
-
-    UnmapViewOfFile(pbFile);
-    CloseHandle(filemap);
-    CloseHandle(image_handle);
-    // HRESULT hr = CreateWICTextureFromFile(
-    //     dev,
-    //     devcon,
-    //     L"C:\\Users\\Carson Tang\\Documents\\tab5.bmp",
-    //     &pTexture,
-    //     &pSRV,
-    //     1920*1040*8);
-    
-//     if (FAILED(hr)) {
-//         OutputDebugStringA("[VisorGG] Failed to create texture and srv");
-//     }
 }
 
 // a struct to define a single vertex
@@ -206,7 +193,6 @@ int WINAPI WinMain(HINSTANCE hInstance,
     // enter the main loop:
 
     MSG msg;
-    CreatePipe();
     while(TRUE)
     {
         if(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -344,11 +330,18 @@ void CleanD3D(void)
     backbuffer->Release();
     dev->Release();
     devcon->Release();
+
+    UnmapViewOfFile(buffer);
+    CloseHandle(hFilemap);
+    CloseHandle(hImage);
 }
 
 // this is the function that creates the shape to render
 void InitGraphics()
 {
+    // Load image buffer into memory
+    CreatePipe();
+    
     // create a triangle using the VERTEX struct
     float rgba0[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
     float rgba1[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
@@ -377,6 +370,13 @@ void InitGraphics()
     devcon->Map(pVBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);    // map the buffer
     memcpy(ms.pData, OurVertices, sizeof(OurVertices));                 // copy the data
     devcon->Unmap(pVBuffer, NULL);                                      // unmap the buffer
+
+    D3D11_MAPPED_SUBRESOURCE ms;
+    devcon->Map(pTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms);
+    memcpy(ms.pData, buffer, 1920*1040*4);
+    ms.RowPitch = 1920 * 4; // The value that the runtime adds to pData to move from row to row
+    ms.DepthPitch = 0;
+    devcon->Unmap(pTexture, 0);
 }
 
 
@@ -462,4 +462,27 @@ void InitPipeline()
 
     dev->CreateInputLayout(ied, 2, VS->GetBufferPointer(), VS->GetBufferSize(), &pLayout);
     devcon->IASetInputLayout(pLayout);
+
+    D3D11_TEXTURE2D_DESC desc;
+    desc.Width = 1920;
+    desc.Height = 1040;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.SampleDesc.Quality = 0;
+    desc.Usage = D3D11_USAGE_DYNAMIC;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    desc.MiscFlags = 0;
+
+    hr = dev->CreateTexture2D(&desc, nullptr, &pTexture);
+    if (FAILED(hr)) {
+        OutputDebugStringA("[VisorGG] Failed to create texture");
+    }
+
+    hr = dev->CreateShaderResourceView(pTexture, nullptr, &pSRV);
+    if (FAILED(hr)) {
+        OutputDebugStringA("[VisorGG] Failed to create shader resource view");
+    }
 }
