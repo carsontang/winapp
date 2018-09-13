@@ -56,7 +56,7 @@ void CreatePipe()
     //     nullptr);
 
     hImage = CreateFileW(
-        L"../../tab.bmp",
+        L"C:\\Users\\Carson Tang\\source\\repos\\carson-winapp\\tab.bmp",
         GENERIC_READ | GENERIC_WRITE,
         0, // the pipe can only be opened once
         nullptr,
@@ -109,6 +109,7 @@ typedef struct D3DXCOLOR {
 struct VERTEX {
     FLOAT X, Y, Z;
     FLOAT R, G, B, A;
+    FLOAT U, V;
 };
 
 // struct VERTEX {
@@ -208,7 +209,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
 
     // set up and initialize Direct3D
     InitD3D(hWnd);
-
+    OutputDebugStringA("[VisorGG] initialized");
     // enter the main loop:
 
     MSG msg;
@@ -252,6 +253,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 // this function initializes and prepares Direct3D for use
 void InitD3D(HWND hWnd)
 {
+    OutputDebugStringA("[VisorGG] calling InitD3D");
+
     // create a struct to hold information about the swap chain
     DXGI_SWAP_CHAIN_DESC scd;
 
@@ -307,7 +310,10 @@ void InitD3D(HWND hWnd)
 
     devcon->RSSetViewports(1, &viewport);
 
+    OutputDebugStringA("[VisorGG] calling InitPipeline");
     InitPipeline();
+
+    OutputDebugStringA("[VisorGG] calling InitGraphics");
     InitGraphics();
 }
 
@@ -326,6 +332,8 @@ void RenderFrame(void)
 
     // select which primtive type we are using
     devcon->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+    devcon->PSSetShaderResources(0, 1, &pSRV);
 
     // draw the vertex buffer to the back buffer
     devcon->Draw(4, 0);
@@ -372,11 +380,20 @@ void InitGraphics()
 //     };
 
     VERTEX OurVertices[] = {
-    {-0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f},
-    {-0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
-    {0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f},
+    {-0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f}, // A
+    {-0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f},  // B
+    {0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f},  // C
+    {0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},   // D
     };
+
+    // from tutorial
+    // VERTEX OurVertices[] = {
+    // {-0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+    // {0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    // {-0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
+    // {0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f},
+    // };
+
 
     float w = static_cast<float>(1920);
 	float h = static_cast<float>(1040);
@@ -444,23 +461,36 @@ void InitPipeline()
     "struct VOut \
     { \
     float4 position : SV_POSITION; \
+    float2 texcoord : TEXCOORD; \
     float4 color : COLOR; \
     }; \
     \
-    VOut VShader(float4 position : POSITION, float4 color : COLOR) \
+    VOut VShader(float4 position : POSITION, float4 color : COLOR, float2 texcoord : TEXCOORD) \
     { \
     VOut output; \
     output.position = position; \
     output.color = color; \
+    output.texcoord = texcoord; \
     return output; \
     }";
 
     static const char *pixel_shader_string = 
-    "float4 PShader(float4 position : SV_POSITION, float4 color : COLOR) : SV_TARGET \
+    "Texture2D Texture; \
+    sampler sampler0; \
+    float4 PShader(float4 position : SV_POSITION, float4 color : COLOR, float2 texcoord : TEXCOORD) : SV_TARGET \
     { \
-    return color; \
+    return Texture.Sample(sampler0, texcoord); \
     }";
 
+    // static const char *pixel_shader_string = 
+    // "Texture2D Texture; \
+    // SamplerState ss; \
+    // float4 PShader(float4 position : SV_POSITION, float4 color : COLOR, float2 texcoord : TEXCOORD) : SV_TARGET \
+    // { \
+    // return color * Texture.sample(ss, texcoord); \
+    // }";
+
+    OutputDebugStringA("[VisorGG] Compiling vertex shader");
     pD3DCompile compile = get_compiler();
     HRESULT hr = compile(
         vertex_shader_string, // pointer to uncompiled ASCII HLSL code
@@ -476,9 +506,10 @@ void InitPipeline()
         nullptr);
     
     if (FAILED(hr)) {
-        printf("Failed to compile vertex shader.\n");
+        OutputDebugStringA("Failed to compile vertex shader.\n");
     }
 
+    OutputDebugStringA("[VisorGG] Compiling pixel shader");
     hr = compile(
         pixel_shader_string, // pointer to uncompiled ASCII HLSL code
         strlen(pixel_shader_string), // length of HLSL code
@@ -493,7 +524,7 @@ void InitPipeline()
         nullptr);
     
     if (FAILED(hr)) {
-        printf("Failed to compile pixel shader.\n");
+        OutputDebugStringA("Failed to compile pixel shader.\n");
     }
 
     // encapsulate both shaders into shader objects
@@ -504,15 +535,19 @@ void InitPipeline()
     devcon->VSSetShader(pVS, 0, 0);
     devcon->PSSetShader(pPS, 0, 0);
 
+    OutputDebugStringA("[VisorGG] Creating input layout object");
     // create the input layout object
     D3D11_INPUT_ELEMENT_DESC ied[] =
     {
         {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
         {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0},
     };
 
-    dev->CreateInputLayout(ied, 2, VS->GetBufferPointer(), VS->GetBufferSize(), &pLayout);
+    // TODO(carson): change 2 to 3
+    dev->CreateInputLayout(ied, 3, VS->GetBufferPointer(), VS->GetBufferSize(), &pLayout);
     devcon->IASetInputLayout(pLayout);
+    OutputDebugStringA("[VisorGG] About to create texture2D");
 
     D3D11_TEXTURE2D_DESC desc;
     desc.Width = 1920;
