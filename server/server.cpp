@@ -48,7 +48,10 @@ int main(void)
         if (ConnectNamedPipe(hPipe, NULL) != FALSE)   // wait for someone to connect to the pipe
         {
             DWORD num_read_bytes = 0;
-            HANDLE hFile = CreateFile(TEXT("C:\\Users\\Carson Tang\\Documents\\buffer.bmp"),
+            wchar_t filename[1000] = {};
+            swprintf_s(filename, 1000, L"C:\\Users\\Carson Tang\\Documents\\buffer_%d.bmp", filecount);
+            
+            HANDLE hFile = CreateFileW(filename,
                     GENERIC_WRITE,
                     0, // the pipe can only be opened once
                     nullptr,
@@ -75,6 +78,7 @@ int main(void)
                 //     }
                 // }
             }
+            filecount++;
             CloseHandle(hFile);
         }
 
