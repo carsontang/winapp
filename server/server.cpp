@@ -34,8 +34,6 @@ int main(void)
     uint8_t buffer[BUFFER_SIZE];
     DWORD dwRead;
 
-    OutputDebugString(TEXT("[VisorGG] Before pipe creation"));
-
     hPipe = CreateNamedPipe(TEXT("\\\\.\\pipe\\Pipe"),
                             PIPE_ACCESS_DUPLEX,
                             PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,   // FILE_FLAG_FIRST_PIPE_INSTANCE is not needed but forces CreateNamedPipe(..) to fail if the pipe already exists...
@@ -45,10 +43,8 @@ int main(void)
                             NMPWAIT_USE_DEFAULT_WAIT,
                             NULL);
     int filecount = 0;
-    OutputDebugString(TEXT("[VisorGG] Before loop"));
     while (hPipe != INVALID_HANDLE_VALUE)
     {
-        OutputDebugString(TEXT("[VisorGG] Inside loop"));
         if (ConnectNamedPipe(hPipe, NULL) != FALSE)   // wait for someone to connect to the pipe
         {
             DWORD num_read_bytes = 0;

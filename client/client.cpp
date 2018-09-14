@@ -27,7 +27,6 @@ int main(void)
             nullptr);
         
         if (hImage == INVALID_HANDLE_VALUE) {
-            OutputDebugStringA("[VisorGG] Unable to create file");
             return false;
         }
 
@@ -40,7 +39,6 @@ int main(void)
             nullptr);
         
         if (hFilemap == INVALID_HANDLE_VALUE) {
-            OutputDebugStringA("[VisorGG] Unable to create file map");
             return false;
         }
 
