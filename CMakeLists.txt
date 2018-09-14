@@ -32,5 +32,8 @@ set_target_properties(carson-winapp
     OUTPUT_NAME "carson-winapp${_output_suffix}")
 
 install(TARGETS carson-winapp DESTINATION bin)
+
+add_subdirectory(client)
+add_subdirectory(server)
  
 message(STATUS "Will install carson-winapp in ${CMAKE_INSTALL_PREFIX}/bin")
